@@ -29,8 +29,6 @@ async def get_current_user(
             # Create user automatically if first time from token
             user = await UserService.create_user(email=email)
     except UserServiceError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase profile storage is unavailable. Check Firestore service account permissions.",
-        )
+        # Allow coaching endpoints to continue even if profile persistence is temporarily unavailable.
+        user = User(id=email, email=email)
     return user

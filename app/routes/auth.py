@@ -32,9 +32,6 @@ async def sync_profile(request: SyncRequest, email: str = Depends(get_current_us
             # update last active
             await UserService.update_last_active(user)
     except UserServiceError:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Firebase profile storage is unavailable. Check Firestore service account permissions.",
-        )
+        return {"email": email, "full_name": request.full_name, "status": "storage_unavailable"}
     
     return {"email": user.email, "full_name": user.full_name, "status": "synced"}

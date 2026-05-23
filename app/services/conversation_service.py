@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 from app.services.speech_service import SpeechService
 from app.services.grammar_service import GrammarService
 from app.services.vocab_service import VocabService
@@ -39,16 +40,19 @@ class ConversationService:
 
     async def _save_conversation(self, connection_id: int, transcript: str, grammar_response: dict, email: str | None = None) -> None:
         now = datetime.utcnow()
-        db = get_firestore_db()
-        db.collection("chat_history").add({
-            "session_id": connection_id,
-            "email": email,
-            "transcript": transcript,
-            "mistakes": grammar_response["mistakes"],
-            "reply": grammar_response["reply"],
-            "follow_up_question": grammar_response["follow_up_question"],
-            "created_at": now,
-        })
+        try:
+            db = get_firestore_db()
+            db.collection("chat_history").add({
+                "session_id": connection_id,
+                "email": email,
+                "transcript": transcript,
+                "mistakes": grammar_response["mistakes"],
+                "reply": grammar_response["reply"],
+                "follow_up_question": grammar_response["follow_up_question"],
+                "created_at": now,
+            })
+        except Exception as e:
+            logging.error(f"Error saving conversation: {e}")
 
     async def _update_streak(self, connection_id: int, grammar_response: dict, email: str | None = None) -> None:
         key = f"streak:{email or connection_id}"

@@ -35,8 +35,11 @@ class VocabService:
             "words": vocab_list,
             "generated_at": datetime.utcnow(),
         }
-        db = get_firestore_db()
-        db.collection("vocab").document(email).set(payload)
+        try:
+            db = get_firestore_db()
+            db.collection("vocab").document(email).set(payload)
+        except Exception as e:
+            logging.error(f"Error saving vocab: {e}")
         return payload
 
     def _parse_vocab_response(self, content: str) -> List[dict]:
@@ -51,10 +54,13 @@ class VocabService:
             return []
 
     async def get_daily_vocab(self, email: str) -> dict | None:
-        db = get_firestore_db()
-        doc = db.collection("vocab").document(email).get()
-        if doc.exists:
-            return doc.to_dict()
+        try:
+            db = get_firestore_db()
+            doc = db.collection("vocab").document(email).get()
+            if doc.exists:
+                return doc.to_dict()
+        except Exception as e:
+            logging.error(f"Error fetching vocab: {e}")
         return None
 
     async def add_spaced_repetition_card(self, email: str, word: str, definition: str, example: str) -> dict:
