@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Header
 from pydantic import BaseModel, EmailStr
-from app.services.user_service import UserService, User
+from app.services.user_service import UserService, User, UserServiceError
 from app.core.auth import decode_access_token
 
 router = APIRouter()
@@ -24,11 +24,17 @@ async def get_current_user(authorization: str = Header(None)) -> str:
 
 @router.post("/sync", response_model=UserProfileResponse)
 async def sync_profile(request: SyncRequest, email: str = Depends(get_current_user)):
-    user = await UserService.get_by_email(email)
-    if not user:
-        user = await UserService.create_user(email=email, full_name=request.full_name)
-    else:
-        # update last active
-        await UserService.update_last_active(user)
+    try:
+        user = await UserService.get_by_email(email)
+        if not user:
+            user = await UserService.create_user(email=email, full_name=request.full_name)
+        else:
+            # update last active
+            await UserService.update_last_active(user)
+    except UserServiceError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Firebase profile storage is unavailable. Check Firestore service account permissions.",
+        )
     
     return {"email": user.email, "full_name": user.full_name, "status": "synced"}

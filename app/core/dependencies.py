@@ -2,7 +2,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from app.core.auth import decode_access_token
 from app.db.redis_client import redis_client
-from app.services.user_service import UserService, User
+from app.services.user_service import UserService, User, UserServiceError
 
 security = HTTPBearer()
 
@@ -23,8 +23,14 @@ async def get_current_user(
     if not email:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid token payload")
 
-    user = await UserService.get_by_email(email)
-    if user is None:
-        # Create user automatically if first time from token
-        user = await UserService.create_user(email=email)
+    try:
+        user = await UserService.get_by_email(email)
+        if user is None:
+            # Create user automatically if first time from token
+            user = await UserService.create_user(email=email)
+    except UserServiceError:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Firebase profile storage is unavailable. Check Firestore service account permissions.",
+        )
     return user

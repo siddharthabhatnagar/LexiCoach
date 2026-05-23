@@ -2,6 +2,9 @@ from datetime import datetime
 from app.db.firebase import get_firestore_db
 import logging
 
+class UserServiceError(Exception):
+    pass
+
 class User:
     def __init__(self, id: str, email: str, full_name: str = None, last_active: datetime = None):
         self.id = id
@@ -13,15 +16,19 @@ class UserService:
     @staticmethod
     async def create_user(email: str, full_name: str | None = None) -> User:
         # User is created via Firebase Auth from the Android app, but we can store profile in Firestore
-        db = get_firestore_db()
-        user_ref = db.collection('users').document(email)
-        user_data = {
-            'email': email,
-            'full_name': full_name,
-            'last_active': datetime.utcnow()
-        }
-        user_ref.set(user_data)
-        return User(id=email, email=email, full_name=full_name, last_active=user_data['last_active'])
+        try:
+            db = get_firestore_db()
+            user_ref = db.collection('users').document(email)
+            user_data = {
+                'email': email,
+                'full_name': full_name,
+                'last_active': datetime.utcnow()
+            }
+            user_ref.set(user_data)
+            return User(id=email, email=email, full_name=full_name, last_active=user_data['last_active'])
+        except Exception as e:
+            logging.error(f"Error creating user by email: {e}")
+            raise UserServiceError("User profile storage is unavailable") from e
 
     @staticmethod
     async def get_by_email(email: str) -> User | None:
@@ -33,11 +40,10 @@ class UserService:
                 data = doc.to_dict()
                 return User(id=email, email=data.get('email'), full_name=data.get('full_name'), last_active=data.get('last_active'))
             else:
-                # Create default user profile if it doesn't exist
-                return await UserService.create_user(email=email)
+                return None
         except Exception as e:
             logging.error(f"Error fetching user by email: {e}")
-            return None
+            raise UserServiceError("User profile storage is unavailable") from e
 
     @staticmethod
     async def get_by_id(user_id: str) -> User | None:
