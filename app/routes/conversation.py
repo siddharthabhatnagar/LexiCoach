@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from app.core.dependencies import get_current_user
 from app.services.conversation_service import ConversationService
-from app.models.user import User
+from app.services.user_service import User
 
 router = APIRouter()
 service = ConversationService()
@@ -21,5 +21,5 @@ class ConversationResponse(BaseModel):
 async def text_conversation(request: ConversationRequest, user: User = Depends(get_current_user)):
     if not request.transcript:
         raise HTTPException(status_code=400, detail="Transcript is required")
-    response = await service.handle_turn(request.transcript, request.roleplay, connection_id=user.id)
+    response = await service.handle_turn(request.transcript, request.roleplay, connection_id=hash(user.email), email=user.email)
     return response

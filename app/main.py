@@ -44,14 +44,14 @@ async def websocket_audio(websocket: WebSocket):
     service = ConversationService()
     audio_buffer = bytearray()
     roleplay = None
-    user_id = None
+    user_email = None
     try:
         token = websocket.query_params.get("token")
         if token:
             payload = decode_access_token(token)
             if payload:
                 user = await UserService.get_by_email(payload.get("sub"))
-                user_id = user.id if user else None
+                user_email = user.email if user else None
         while True:
             message = await websocket.receive()
             if message["type"] == "websocket.receive_text":
@@ -75,7 +75,7 @@ async def websocket_audio(websocket: WebSocket):
                     transcript=transcript,
                     roleplay=roleplay,
                     connection_id=id(websocket),
-                    user_id=user_id,
+                    email=user_email,
                 )
                 await websocket.send_json(response)
                 audio_buffer = bytearray()
