@@ -1,19 +1,14 @@
 from datetime import datetime
-from sqlalchemy import Column, Integer, Float, DateTime, ForeignKey, String
-from sqlalchemy.orm import relationship
-from app.models.base import Base
+from pydantic import BaseModel, Field
+from typing import Optional
 
-class Progress(Base):
-    __tablename__ = "progress"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    words_learned = Column(Integer, default=0)
-    grammar_mistakes = Column(Integer, default=0)
-    sessions_completed = Column(Integer, default=0)
-    last_updated = Column(DateTime, default=datetime.utcnow)
-    current_interval_days = Column(Integer, default=1)
-    ease_factor = Column(Float, default=2.5)
-    current_stage = Column(String(50), default="baseline")
-
-    user = relationship("User", backref="progress")
+class Progress(BaseModel):
+    """Pydantic model representing user progress - stored in Firestore."""
+    email: str
+    words_learned: int = 0
+    grammar_mistakes: int = 0
+    sessions_completed: int = 0
+    last_updated: datetime = Field(default_factory=datetime.utcnow)
+    current_interval_days: int = 1
+    ease_factor: float = 2.5
+    current_stage: str = "baseline"
