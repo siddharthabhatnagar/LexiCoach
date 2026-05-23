@@ -4,12 +4,8 @@ cerebras-cloud-sdk[aiohttp]
 deepgram-sdk
 aioboto3
 boto3
-SQLAlchemy
-asyncpg
-motor
 redis
-passlib[bcrypt]
-python-jose[cryptography]
+firebase-admin
 python-dotenv
 reportlab
 celery[redis]

@@ -1,25 +1,17 @@
-import time
 from typing import Optional
-from jose import jwt, JWTError
-from passlib.context import CryptContext
-from app.core.config import settings
-
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
-
-def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
-
-def create_access_token(subject: str, expires_in: int | None = None) -> str:
-    expire = int(time.time()) + (expires_in or settings.jwt_expiration_seconds)
-    payload = {"sub": subject, "exp": expire}
-    return jwt.encode(payload, settings.jwt_secret, algorithm=settings.jwt_algorithm)
+import firebase_admin
+from firebase_admin import auth
+from app.db.firebase import get_firestore_db
 
 def decode_access_token(token: str) -> Optional[dict]:
+    # Ensure Firebase is initialized
+    get_firestore_db()
     try:
-        payload = jwt.decode(token, settings.jwt_secret, algorithms=[settings.jwt_algorithm])
-        return payload
-    except JWTError:
+        decoded_token = auth.verify_id_token(token)
+        # Firebase token contains 'uid', we'll map it to 'sub' for compatibility with existing code
+        decoded_token['sub'] = decoded_token.get('email') or decoded_token.get('uid')
+        return decoded_token
+    except Exception as e:
+        import logging
+        logging.error(f"Error verifying Firebase token: {e}")
         return None

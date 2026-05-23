@@ -1,39 +1,34 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import APIRouter, Depends, HTTPException, status, Header
 from pydantic import BaseModel, EmailStr
-from app.core.auth import create_access_token, verify_password
-from app.core.dependencies import get_db
-from app.services.user_service import UserService
-from app.models.user import User
+from app.services.user_service import UserService, User
+from app.core.auth import decode_access_token
 
 router = APIRouter()
 
-class RegisterRequest(BaseModel):
-    email: EmailStr
-    password: str
+class SyncRequest(BaseModel):
     full_name: str | None = None
 
-class LoginRequest(BaseModel):
-    email: EmailStr
-    password: str
+class UserProfileResponse(BaseModel):
+    email: str
+    full_name: str | None = None
+    status: str = "ok"
 
-class TokenResponse(BaseModel):
-    access_token: str
-    token_type: str = "bearer"
+async def get_current_user(authorization: str = Header(None)) -> str:
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid authorization header")
+    token = authorization.split(" ")[1]
+    payload = decode_access_token(token)
+    if not payload or not payload.get("sub"):
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Firebase token")
+    return payload["sub"]
 
-@router.post("/register", response_model=TokenResponse)
-async def register(request: RegisterRequest, db: AsyncSession = Depends(get_db)):
-    existing = await UserService.get_by_email(request.email)
-    if existing:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered")
-    user = await UserService.create_user(db, request.email, request.password, request.full_name)
-    token = create_access_token(subject=user.email)
-    return {"access_token": token}
-
-@router.post("/login", response_model=TokenResponse)
-async def login(request: LoginRequest):
-    user = await UserService.get_by_email(request.email)
-    if not user or not verify_password(request.password, user.hashed_password):
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-    token = create_access_token(subject=user.email)
-    return {"access_token": token}
+@router.post("/sync", response_model=UserProfileResponse)
+async def sync_profile(request: SyncRequest, email: str = Depends(get_current_user)):
+    user = await UserService.get_by_email(email)
+    if not user:
+        user = await UserService.create_user(email=email, full_name=request.full_name)
+    else:
+        # update last active
+        await UserService.update_last_active(user)
+    
+    return {"email": user.email, "full_name": user.full_name, "status": "synced"}
