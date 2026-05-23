@@ -1,6 +1,7 @@
 import os
 from functools import lru_cache
-from pydantic import BaseSettings, AnyUrl, Field
+from pydantic import AnyUrl, Field
+from pydantic_settings import BaseSettings
 
 class Settings(BaseSettings):
     app_name: str = "LexiCoach English AI Backend"

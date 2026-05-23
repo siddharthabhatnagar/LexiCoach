@@ -10,3 +10,4 @@ python-dotenv
 reportlab
 celery[redis]
 pydantic
+pydantic-settings
